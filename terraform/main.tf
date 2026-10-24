@@ -91,3 +91,54 @@ resource "azurerm_network_interface_security_group_association" "name" {
 output "vm-pip" {
   value = azurerm_public_ip.pip.ip_address
 }
+#step4 : VM Creation
+resource "azurerm_windows_virtual_machine" "vm-01" {
+  name                  = "windowsvm-01"
+  resource_group_name   = azurerm_resource_group.rg-name.name
+  location              = azurerm_resource_group.rg-name.location
+  size                  = "Standard_D2s_v3"
+  admin_username        = "azureuser"
+  admin_password        = "Welcome@12345"
+  network_interface_ids = [azurerm_network_interface.nic-01.id]
+  os_disk {
+    name                 = "windowsvm-01-osdisk"
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+  source_image_reference {
+    offer     = "WindowsServer"
+    publisher = "MicrosoftWindowsServer"
+    version   = "latest"
+    sku       = "2022-datacenter-g2"
+  }
+}
+# network security group
+resource "azurerm_network_security_group" "nsg-01" {
+  name                = "NIC-nsg-01"
+  resource_group_name = azurerm_resource_group.rg-name.name
+  location            = azurerm_resource_group.rg-name.location
+}
+#network security rule
+resource "azurerm_network_security_rule" "nsg-rule-01" {
+  name                        = "RDP-Allow"
+  priority                    = 100
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "3389"
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  network_security_group_name = azurerm_network_security_group.nsg-01.name
+  resource_group_name         = azurerm_resource_group.rg-name.name
+}
+#network security group association with nic card
+resource "azurerm_network_interface_security_group_association" "name" {
+  network_interface_id      = azurerm_network_interface.nic-01.id
+  network_security_group_id = azurerm_network_security_group.nsg-01.id
+
+}
+
+output "vm-pip" {
+  value = azurerm_public_ip.pip.ip_address
+}
